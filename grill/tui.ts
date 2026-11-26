@@ -218,9 +218,11 @@ function quit(): never {
   try {
     unlinkSync(path);
   } catch {}
-  const wezterm = arg("wezterm");
-  const pane = arg("return-pane");
-  if (wezterm && pane) spawnSync(wezterm, ["cli", "activate-pane", "--pane-id", pane]);
+  // The launcher's command to focus Claude's pane again, a JSON argv.
+  try {
+    const [cmd, ...args] = JSON.parse(arg("return-focus") ?? "[]");
+    if (cmd) spawnSync(cmd, args, { stdio: "ignore" });
+  } catch {}
   process.exit(0);
 }
 

@@ -1,11 +1,11 @@
 #!/usr/bin/env bun
 // Stop hook for /grill. When Claude's last message ends a round with a grill block, it sends
-// the round to the grill TUI (opening one in a WezTerm or herdr split if none is running),
+// the round to the grill TUI (opening one in a terminal split if none is running, see launchers.ts),
 // waits for the answers and hands them back to Claude so it can write the next round.
 // Without a grill block it closes the session's TUI, if there is one, and lets Claude stop.
 import { connect, type Socket } from "node:net";
 import { existsSync, unlinkSync } from "node:fs";
-import { spawnSync } from "node:child_process";
+import { launch } from "./launchers.ts";
 import { socketPath, type Round } from "./shared.ts";
 
 const input = await Bun.stdin.json();
@@ -44,28 +44,6 @@ function readReply(socket: Socket): Promise<{ type: string; text?: string } | nu
     socket.on("close", () => resolve(null));
     socket.on("error", () => resolve(null));
   });
-}
-
-// Opens a TUI for this session in a split below Claude's pane.
-function launch(): boolean {
-  const tui = [process.execPath, `${import.meta.dir}/tui.ts`, "--session", session];
-  const pane = process.env.WEZTERM_PANE;
-  if (pane) {
-    const wezterm = process.env.WEZTERM_EXECUTABLE_DIR
-      ? `${process.env.WEZTERM_EXECUTABLE_DIR}/wezterm`
-      : "wezterm";
-    const args = ["cli", "split-pane", "--pane-id", pane, "--bottom", "--percent", "50", "--"];
-    tui.push("--wezterm", wezterm, "--return-pane", pane);
-    return spawnSync(wezterm, [...args, ...tui]).status === 0;
-  }
-  if (process.env.HERDR_ENV === "1") {
-    const split = spawnSync("herdr", ["pane", "split", "--current", "--direction", "down", "--focus"]);
-    const id = JSON.parse(split.stdout?.toString() || "{}")?.result?.pane?.pane_id;
-    if (!id) return false;
-    const command = "exec " + tui.map((arg) => `'${arg.replaceAll("'", `'\\''`)}'`).join(" ");
-    return spawnSync("herdr", ["pane", "run", id, command]).status === 0;
-  }
-  return false;
 }
 
 async function waitForTui(path: string): Promise<Socket | null> {
@@ -118,10 +96,11 @@ if (!round.questions?.length) {
 const socket =
   (await tryConnect(socketPath(session))) ??
   (await tryConnect(socketPath("any"))) ??
-  (launch() ? await waitForTui(socketPath(session)) : null);
+  (launch([process.execPath, `${import.meta.dir}/tui.ts`, "--session", session]) ? await waitForTui(socketPath(session)) : null);
 if (!socket) {
   keepGoing(
-    "No grill TUI could open (this terminal is neither WezTerm nor herdr, and no `grill` is running). " +
+    "No grill TUI could open (it opens in a split in herdr, tmux, Zellij, WezTerm, kitty or iTerm2, " +
+      "and no `grill` is running in another terminal). " +
       "Ask this round again in the grilling skill's markdown format, and keep that format for the rest of the session.",
   );
 }
