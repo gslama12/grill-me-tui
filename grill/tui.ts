@@ -66,7 +66,7 @@ function startRound(round: Round) {
     title: "Anything else?",
     body: "Anything else for this round that I haven't asked about?",
     options: [],
-    prefill: "no",
+    prefill: "",
     kind: "extra",
   });
   answers = items.map((item) => item.prefill);
@@ -75,12 +75,13 @@ function startRound(round: Round) {
   render();
 }
 
+// The "Anything else?" note: empty (or "no") means nothing.
+const extraNote = (answer: string | null) => (!answer || /^"no"$/i.test(answer) ? null : answer);
+
 function answerText(): string {
   const lines = items.map((item, i) => {
     const answer = resolve(item, answers[i]);
-    if (item.kind === "extra") {
-      return `Anything else: ${!answer || /^"no"$/i.test(answer) ? "nothing" : answer}`;
-    }
+    if (item.kind === "extra") return `Anything else: ${extraNote(answer) ?? "nothing"}`;
     return `Q${i + 1} ${item.title}: ${answer ?? "unanswered"}`;
   });
   return [
@@ -145,46 +146,83 @@ const separator = () => PAD + darkest("─".repeat(width()));
 const SAVE = "\x1b7";
 const RESTORE = "\x1b8";
 
+// The pane's height. Everything drawn must fit in it, or the terminal scrolls the header away.
+const rows = () => Math.max(8, process.stdout.rows || 24);
+
+// The header, made smaller when the pane is short: without the blank rows, or only the text row.
+function fitHeader(text: string, room: number, progress?: number): string[] {
+  const full = header(text, progress);
+  if (full.length <= room) return full;
+  const bar = full.slice(1, -1).filter((row, i, all) => i !== 0 && i !== all.length - 1);
+  return bar.length <= room ? bar : bar.slice(0, 1);
+}
+
+// Cuts lines to at most `max`, ending the last kept one with "…".
+function cut(lines: string[], max: number): string[] {
+  if (lines.length <= max) return lines;
+  if (max <= 0) return [];
+  return [...lines.slice(0, max - 1), `${lines[max - 1]} …`];
+}
+
 function render() {
-  const out: string[] = [];
   const write = (s: string) => process.stdout.write("\x1b[2J\x1b[H" + s);
+  const height = rows();
 
   if (mode === "waiting") {
     const spinner = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"[frame % 10];
     const what = roundNo ? `Claude is preparing round ${roundNo + 1}…` : "Waiting for a grilling session…";
-    out.push(...header("grill"), `${PAD}${orange(spinner)} ${light(what)}`);
+    const out = [...fitHeader("grill", height - 1), `${PAD}${orange(spinner)} ${light(what)}`];
     return write("\x1b[?25l" + out.join("\n"));
   }
 
   if (mode === "summary") {
-    out.push(...header(`grill · round ${roundNo} · summary`, 1));
-    items.forEach((item, i) => {
+    const footer = [separator(), PAD + darker("⏎ send to Claude · ← back · esc talk in chat")];
+    const shown = (item: Item, i: number) => {
       const answer = resolve(item, answers[i]);
-      out.push(PAD + bold(item.title), `${PAD}  ${answer ?? yellow("unanswered")}`, "");
-    });
-    out.push(separator(), PAD + darker("⏎ send to Claude · ← back · esc talk in chat"));
-    return write("\x1b[?25l" + out.join("\n"));
+      if (item.kind === "extra") return extraNote(answer) ?? darker("nothing");
+      return answer ?? yellow("unanswered");
+    };
+    const top = fitHeader(`grill · round ${roundNo} · summary`, height - footer.length - items.length, 1);
+    const room = height - top.length - footer.length;
+    // Three rows per answer when there's room, else one row each, else cut.
+    let body = items.flatMap((item, i) => [PAD + bold(item.title), `${PAD}  ${shown(item, i)}`, ""]);
+    if (body.length > room) {
+      body = items.map((item, i) => `${PAD}${bold(item.title)}: ${shown(item, i)}`);
+      body = cut(body, room);
+    }
+    return write("\x1b[?25l" + [...top, ...body, ...footer].join("\n"));
   }
 
   const item = items[index];
   const chosen = answers[index].trim().toUpperCase();
-  out.push(...header(`grill · round ${roundNo} · ${index + 1}/${items.length}`, (index + 1) / items.length));
-  out.push(PAD + bold(orange(item.title)), "");
-  for (const line of wrap(item.body)) out.push(PAD + line);
-  out.push("");
+  // Input line plus the separators and key help around it.
+  const bottomRows = 4;
+  const title = [PAD + bold(orange(item.title)), ""];
+  const body = wrap(item.body).map((line) => PAD + line);
+  const options: string[] = [];
   item.options.forEach((option, i) => {
     // The option the input picks is marked and drawn in orange, all of its lines.
     const picked = chosen === letter(i);
     const paint = (s: string) => (picked ? bold(orange(s)) : s);
     const [first, ...rest] = wrap(option, width() - 7);
-    out.push(PAD + paint(`${picked ? "›" : " "} ${letter(i)}  ${first}`));
-    for (const line of rest) out.push(PAD + paint(`     ${line}`));
+    options.push(PAD + paint(`${picked ? "›" : " "} ${letter(i)}  ${first}`));
+    for (const line of rest) options.push(PAD + paint(`     ${line}`));
   });
-  if (item.options.length) out.push("");
-  if (item.reason) {
-    for (const line of wrap(`Suggestion: ${item.reason}`)) out.push(PAD + light(line));
-    out.push("");
-  }
+  const reason = item.reason ? [...wrap(`Suggestion: ${item.reason}`).map((line) => PAD + light(line)), ""] : [];
+  const gap = (lines: string[]) => (lines.length ? [...lines, ""] : []);
+
+  // What must stay: title, at least one body line, the options. The header shrinks first, then the
+  // suggestion goes, then the body is cut.
+  const minimum = title.length + 2 + gap(options).length + bottomRows;
+  const top = fitHeader(
+    `grill · round ${roundNo} · ${index + 1}/${items.length}`,
+    height - minimum,
+    (index + 1) / items.length,
+  );
+  let room = height - top.length - bottomRows - title.length - gap(options).length;
+  const keepReason = reason.length + body.length + 1 <= room;
+  if (keepReason) room -= reason.length;
+  const out = [...top, ...title, ...gap(cut(body, room - 1)), ...gap(options), ...(keepReason ? reason : [])];
   out.push(separator());
   // The cursor is parked at the end of the input line while the help is drawn below it.
   const help = [separator(), PAD + darker("⏎ confirm · ← → previous/next · esc talk in chat")];
@@ -245,7 +283,9 @@ createServer((socket) => {
       if (message.type === "round") startRound(message);
       if (message.type === "close") {
         if (!manual) quit();
+        // A manual TUI stays open for the next session, and stops saying a round is coming.
         roundNo = 0;
+        render();
       }
     }
   });
