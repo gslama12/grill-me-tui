@@ -65,13 +65,15 @@ if (!source) {
 
 // Only a session the user started with /grill gets the TUI. Claude Code records "/grill" at the
 // start of a message as a command tag, and later in a message as a skill_mention attachment.
+// Installed as a plugin, the skill is named "grill:grill". Names match exactly, never /grill-me.
+const names = ["grill", "grill:grill"];
 const transcript = await Bun.file(String(input.transcript_path ?? "")).text().catch(() => "");
 const typed = transcript.split("\n").some((line) => {
   try {
     const entry = JSON.parse(line);
-    if (entry.type === "attachment") return entry.attachment?.type === "skill_mention" && entry.attachment.skillName === "grill";
+    if (entry.type === "attachment") return entry.attachment?.type === "skill_mention" && names.includes(entry.attachment.skillName);
     return entry.type === "user" && typeof entry.message?.content === "string" &&
-      entry.message.content.includes("<command-name>/grill</command-name>");
+      names.some((name) => entry.message.content.includes(`<command-name>/${name}</command-name>`));
   } catch {
     return false;
   }

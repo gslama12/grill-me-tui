@@ -1,6 +1,6 @@
 ---
 name: grill
-description: A relentless interview to sharpen a plan or design, answered one question at a time in the grill TUI. Use only when the user types exactly /grill, at the start of the message or anywhere in it. Never for /grill-me, /grill-with-docs or "grill me": those use the grilling skill.
+description: A relentless interview to sharpen a plan or design, answered one question at a time in the grill TUI. Use only when the user types exactly /grill or /grill:grill (its name when installed as a plugin), at the start of the message or anywhere in it. Never for /grill-me, /grill-with-docs or "grill me": those use the grilling skill.
 ---
 
 Call the Skill tool with "grilling". Follow it, except for how a round is written: the user answers in a terminal UI, which a Stop hook opens when your message ends with a grill block.

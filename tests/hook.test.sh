@@ -64,6 +64,13 @@ printf '%s\n' '{"type":"user","message":{"role":"user","content":"<command-messa
   printf '%s\n' '{"type":"attachment","attachment":{"type":"skill_mention","skillName":"grill"}}'
 } >"$tmp/mention.jsonl"
 printf '%s\n' '{"type":"attachment","attachment":{"type":"skill_mention","skillName":"grilling"}}' >"$tmp/other-mention.jsonl"
+# The same two forms when installed as a plugin, and lookalikes that must not count.
+printf '%s\n' '{"type":"user","message":{"role":"user","content":"<command-message>grill:grill</command-message>\n<command-name>/grill:grill</command-name>\n<command-args>the cache</command-args>"}}' >"$tmp/plugin-command.jsonl"
+printf '%s\n' '{"type":"attachment","attachment":{"type":"skill_mention","skillName":"grill:grill"}}' >"$tmp/plugin-mention.jsonl"
+for name in grill-me grill:grill-me other:grill; do
+  printf '{"type":"user","message":{"role":"user","content":"<command-name>/%s</command-name>"}}\n' "$name"
+  printf '{"type":"attachment","attachment":{"type":"skill_mention","skillName":"%s"}}\n' "$name"
+done >"$tmp/lookalikes.jsonl"
 
 round='```grill
 {"round":1,"questions":[{"title":"Storage","body":"Where do sessions live?","recommendation":"SQLite","alternatives":["Redis"]}]}
@@ -130,6 +137,18 @@ check "/grill command tag, no terminal: markdown fallback" "$(block "$no_tui")" 
 new_id mention
 out=$(input "$id" "$tmp/mention.jsonl" "$message" | no_terminal "$hook"); code=$?
 check "/grill skill_mention, no terminal: markdown fallback" "$(block "$no_tui")" "$out" $code
+
+new_id plugincommand
+out=$(input "$id" "$tmp/plugin-command.jsonl" "$message" | no_terminal "$hook"); code=$?
+check "/grill:grill command tag (plugin), no terminal: markdown fallback" "$(block "$no_tui")" "$out" $code
+
+new_id pluginmention
+out=$(input "$id" "$tmp/plugin-mention.jsonl" "$message" | no_terminal "$hook"); code=$?
+check "grill:grill skill_mention (plugin), no terminal: markdown fallback" "$(block "$no_tui")" "$out" $code
+
+new_id lookalikes
+out=$(input "$id" "$tmp/lookalikes.jsonl" "$message" | no_terminal "$hook"); code=$?
+check "/grill-me, /grill:grill-me, /other:grill are not /grill" "$(block "$not_typed")" "$out" $code
 
 out=$(input "" "$tmp/command.jsonl" "$message" | no_terminal "$hook"); code=$?
 check "no session id: exits 0, no output" "" "$out" $code
