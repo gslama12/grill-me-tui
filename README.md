@@ -1,6 +1,6 @@
 # grill-me-tui
 
-A terminal UI for Claude Code that lets you answer the questions of Matt Pocock's `grill-me` interview one at a time, in a split pane below your session.
+A minimal terminal UI for Claude Code that lets you answer the questions of Matt Pocock's `grill-me` interview one at a time, in a split pane below your session.
 
 ![grill-me-tui demo](docs/demo.gif)
 
@@ -30,18 +30,15 @@ It links the skill and hook into `~/.claude`, merges the hook into `settings.jso
 /plugin install grill@grill-me-tui
 ```
 
-Two steps stay manual:
-
 - Add `"CLAUDE_CODE_STOP_HOOK_BLOCK_CAP": "200"` under `"env"` in `~/.claude/settings.json`, so long interviews aren't cut off.
 - Optional, for a `grill` command in your own terminal: `mkdir -p ~/.local/bin && ln -s ~/.claude/plugins/marketplaces/grill-me-tui/grill/tui.ts ~/.local/bin/grill`
 
 Uninstall with `/plugin uninstall grill@grill-me-tui`.
 
-## Use
+## How to Use
 
 Start a new Claude Code session and type `/grill <topic>` (or `/grill:grill <topic>` with the plugin), at the start of a message or anywhere in it. `/grill-me` stays the chat version.
 
-Keys: **Enter** confirm · **←/→** move · **Esc** back to chat
 
 ## Environments
 
