@@ -57,27 +57,35 @@ async function waitForTui(path: string): Promise<Socket | null> {
 
 if (!session) process.exit(0);
 
+// Only a session the user started with /grill gets the TUI. Claude Code records "/grill" at the
+// start of a message as a command tag, and later in a message as a skill_mention attachment.
+// Installed as a plugin, the skill is named "grill:grill". Names match exactly, never /grill-me.
+async function typedGrill(): Promise<boolean> {
+  const names = ["grill", "grill:grill"];
+  const transcript = await Bun.file(String(input.transcript_path ?? "")).text().catch(() => "");
+  return transcript.split("\n").some((line) => {
+    try {
+      const entry = JSON.parse(line);
+      if (entry.type === "attachment") return entry.attachment?.type === "skill_mention" && names.includes(entry.attachment.skillName);
+      return entry.type === "user" && typeof entry.message?.content === "string" &&
+        names.some((name) => entry.message.content.includes(`<command-name>/${name}</command-name>`));
+    } catch {
+      return false;
+    }
+  });
+}
+
+// Grilling is over: close the session's own TUI, or tell a manual `grill` (any.sock) that this
+// session is done, so it stops waiting for a next round. Only for /grill sessions, since every
+// other session's Stop passes through here too.
 if (!source) {
-  const socket = await tryConnect(socketPath(session));
+  const own = await tryConnect(socketPath(session));
+  const socket = own ?? (existsSync(socketPath("any")) && (await typedGrill()) ? await tryConnect(socketPath("any")) : null);
   socket?.end(JSON.stringify({ type: "close" }) + "\n");
   process.exit(0);
 }
 
-// Only a session the user started with /grill gets the TUI. Claude Code records "/grill" at the
-// start of a message as a command tag, and later in a message as a skill_mention attachment.
-// Installed as a plugin, the skill is named "grill:grill". Names match exactly, never /grill-me.
-const names = ["grill", "grill:grill"];
-const transcript = await Bun.file(String(input.transcript_path ?? "")).text().catch(() => "");
-const typed = transcript.split("\n").some((line) => {
-  try {
-    const entry = JSON.parse(line);
-    if (entry.type === "attachment") return entry.attachment?.type === "skill_mention" && names.includes(entry.attachment.skillName);
-    return entry.type === "user" && typeof entry.message?.content === "string" &&
-      names.some((name) => entry.message.content.includes(`<command-name>/${name}</command-name>`));
-  } catch {
-    return false;
-  }
-});
+const typed = await typedGrill();
 if (!typed) {
   keepGoing(
     "The user didn't type /grill in this session, so the grill TUI stays closed. Ask this round again " +

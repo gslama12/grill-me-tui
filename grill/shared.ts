@@ -1,6 +1,7 @@
 // What the Stop hook (hook.ts) and the grill TUI (tui.ts) send each other over a Unix socket,
 // one JSON object per line.
-//   hook -> TUI: {type: "round", ...Round} or {type: "close"}
+//   hook -> TUI: {type: "round", ...Round} or {type: "close"} (grilling ended: a session TUI quits,
+//                a manual one stays open and waits for the next session)
 //   TUI -> hook: {type: "answers", text} or {type: "chat"} (the user wants to talk in chat)
 
 export type Question = {
