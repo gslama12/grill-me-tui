@@ -4,37 +4,44 @@ A terminal UI for Claude Code that lets you answer the questions of Matt Pocock'
 
 ![grill-me-tui demo](docs/demo.gif)
 
-## Install and use
+## Install
 
-You need [Claude Code](https://claude.com/claude-code), [Bun](https://bun.sh) and the `grilling` skill:
+You need [Claude Code](https://claude.com/claude-code), [Bun](https://bun.sh) and Matt Pocock's `grilling` skill:
 
 ```sh
 npx skills add mattpocock/skills --skill grilling -g -a claude-code -y
+```
+
+Then pick **one** of the two options (not both, or the hook runs twice).
+
+**Option 1: install script** (command: `/grill`)
+
+```sh
 git clone https://github.com/gslama12/grill-me-tui ~/.local/share/grill-me-tui   # or any permanent place
 ~/.local/share/grill-me-tui/install.sh
 ```
 
-Start a new Claude Code session and type `/grill <topic>`, at the start of a message or anywhere in it (`/grill-me` stays the chat version).
+It links the skill and hook into `~/.claude`, merges the hook into `settings.json` (with a backup) and puts a `grill` command in `~/.local/bin`. Update with `git pull`; uninstall with `~/.local/share/grill-me-tui/uninstall.sh`.
 
-Keys: **Enter** confirm · **←/→** move · **Esc** back to chat
-
-Uninstall: `~/.local/share/grill-me-tui/uninstall.sh`
-
-### Or install as a plugin
-
-Use this or `install.sh`, not both. Install the `grilling` skill as above, then in Claude Code:
+**Option 2: Claude Code plugin** (command: `/grill:grill`)
 
 ```
 /plugin marketplace add gslama12/grill-me-tui
 /plugin install grill@grill-me-tui
 ```
 
-The command is then `/grill:grill`. Two steps stay manual:
+Two steps stay manual:
 
 - Add `"CLAUDE_CODE_STOP_HOOK_BLOCK_CAP": "200"` under `"env"` in `~/.claude/settings.json`, so long interviews aren't cut off.
 - Optional, for a `grill` command in your own terminal: `mkdir -p ~/.local/bin && ln -s ~/.claude/plugins/marketplaces/grill-me-tui/grill/tui.ts ~/.local/bin/grill`
 
-Uninstall: `/plugin uninstall grill@grill-me-tui`
+Uninstall with `/plugin uninstall grill@grill-me-tui`.
+
+## Use
+
+Start a new Claude Code session and type `/grill <topic>` (or `/grill:grill <topic>` with the plugin), at the start of a message or anywhere in it. `/grill-me` stays the chat version.
+
+Keys: **Enter** confirm · **←/→** move · **Esc** back to chat
 
 ## Environments
 
