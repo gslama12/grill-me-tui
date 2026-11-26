@@ -1,0 +1,6 @@
+{
+  "name": "grill-me-tui",
+  "description": "The grill terminal UI for Claude Code.",
+  "owner": { "name": "gslama12" },
+  "plugins": [{ "name": "grill", "source": "./" }]
+}

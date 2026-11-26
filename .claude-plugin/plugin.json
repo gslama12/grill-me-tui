@@ -1,0 +1,7 @@
+{
+  "name": "grill",
+  "description": "Answer Claude Code's grilling interview one question at a time in a terminal UI.",
+  "author": { "name": "gslama12" },
+  "repository": "https://github.com/gslama12/grill-me-tui",
+  "license": "MIT"
+}
