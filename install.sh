@@ -47,6 +47,16 @@ if [ ! -f "$config/skills/grilling/SKILL.md" ] && [ ! -f "$HOME/.agents/skills/g
   echo "  npx skills add mattpocock/skills --skill grilling -g -a claude-code -y"
   warned=1
 fi
+# The plugin brings its own Stop hook: with both, two hooks would answer every round. Claude Code
+# lists installed plugins in installed_plugins.json, and a disabled one as false in settings.json.
+plugin=grill@grill-me-tui
+if grep -qF "\"$plugin\"" "$config/plugins/installed_plugins.json" 2>/dev/null &&
+  ! grep -q "\"$plugin\"[[:space:]]*:[[:space:]]*false" "$config/settings.json"; then
+  echo
+  echo "warning: the grill plugin is installed too, so every round would run two Stop hooks. Use one or"
+  echo "the other: remove the plugin with 'claude plugin uninstall $plugin', or run ./uninstall.sh."
+  warned=1
+fi
 case ":$PATH:" in
   *":$bin:"*) ;;
   *)
