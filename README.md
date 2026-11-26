@@ -20,6 +20,22 @@ Keys: **Enter** confirm · **←/→** move · **Esc** back to chat
 
 Uninstall: `~/.local/share/grill-me-tui/uninstall.sh`
 
+### Or install as a plugin
+
+Use this or `install.sh`, not both. Install the `grilling` skill as above, then in Claude Code:
+
+```
+/plugin marketplace add gslama12/grill-me-tui
+/plugin install grill@grill-me-tui
+```
+
+The command is then `/grill:grill`. Two steps stay manual:
+
+- Add `"CLAUDE_CODE_STOP_HOOK_BLOCK_CAP": "200"` under `"env"` in `~/.claude/settings.json`, so long interviews aren't cut off.
+- Optional, for a `grill` command in your own terminal: `mkdir -p ~/.local/bin && ln -s ~/.claude/plugins/marketplaces/grill-me-tui/grill/tui.ts ~/.local/bin/grill`
+
+Uninstall: `/plugin uninstall grill@grill-me-tui`
+
 ## Environments
 
 | Terminal | Status |
@@ -35,7 +51,7 @@ Uninstall: `~/.local/share/grill-me-tui/uninstall.sh`
 ## How it works
 
 - `/grill` is a skill that runs `grilling`, but has Claude end each round with a JSON block of questions.
-- A Stop hook, added to your Claude Code `settings.json` by `install.sh`, reads that block when Claude finishes its message.
+- A Stop hook, added by `install.sh` or the plugin, reads that block when Claude finishes its message.
 - The hook opens the TUI (a Bun script) in a split below Claude's pane, or uses a `grill` you already started in another terminal.
 - Hook and TUI talk over a Unix socket in `/tmp/claude-grill`: questions go in, your answers come back.
 - The hook returns the answers to Claude, which writes the next round; when there are no more questions, the TUI closes and Claude sums up in chat.
