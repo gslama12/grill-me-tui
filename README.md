@@ -1,6 +1,6 @@
 # grill-me-tui
 
-A minimal terminal UI for Claude Code that lets you answer the questions of Matt Pocock's `grill-me` interview one at a time, in a split pane below your session.
+A minimal terminal UI for Claude Code that lets you answer the questions of Matt Pocock's `grill-me` interview one at a time, in a split pane below your session. Unlike Claude's AskUserQuestion interface, this UI supports an arbitrary number of questions per round.
 
 ![grill-me-tui demo](docs/demo.gif)
 
